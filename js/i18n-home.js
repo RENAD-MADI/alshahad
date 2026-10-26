@@ -6,7 +6,7 @@ const PAGE_I18N = {
     home: {
       hero: {
         eyebrow: "بحر الشهد للمقاولات والعقارات",
-        title: "نبني المشاريع… ونطوّر الفرص… ونصنع قيمة تدوم",
+        title: "شركة مقاولات وخدمات عقارية في جدة… نبني ونطوّر ونصنع قيمة تدوم",
         subtitle: "حلول متكاملة في المقاولات والتطوير العقاري والتسويق العقاري، نقدم من خلالها خدمات احترافية تجمع بين جودة التنفيذ، الرؤية الاستثمارية، والخبرة العملية لتحقيق نتائج مستدامة.",
         text: "في شركة بحر الشهد نؤمن أن كل مشروع ناجح يبدأ بفكرة واضحة وشريك قادر على تحويلها إلى واقع. نعمل على تقديم منظومة خدمات متكاملة تشمل تنفيذ المشاريع الإنشائية، إدارة الأعمال التطويرية، والتسويق العقاري باحترافية عالية.",
         cta: "اطلب استشارة"
@@ -97,7 +97,7 @@ const PAGE_I18N = {
     home: {
       hero: {
         eyebrow: "Al Shahad Contracting & Real Estate",
-        title: "We Build Projects… Develop Opportunities… Create Lasting Value",
+        title: "Contracting & Real Estate Company in Jeddah — Building Lasting Value",
         subtitle: "Integrated solutions in contracting, real estate development and real estate marketing — professional services that combine execution quality, investment vision and practical expertise to achieve sustainable results.",
         text: "At Al Shahad, we believe every successful project starts with a clear idea and a partner capable of turning it into reality. We provide a complete service ecosystem covering construction execution, development management, and professional real estate marketing.",
         cta: "Request Consultation"

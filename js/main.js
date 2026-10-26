@@ -11,7 +11,13 @@ function getLang() {
   return localStorage.getItem("site-lang") || "ar";
 }
 
+/* صفحات الهبوط الإعلانية لا تحمّل translations.js — نتجاوز الترجمة بهدوء */
+function hasTranslations() {
+  return typeof TRANSLATIONS !== "undefined" && TRANSLATIONS;
+}
+
 function applyTranslations(lang) {
+  if (!hasTranslations()) return;
   const dict = TRANSLATIONS[lang] || TRANSLATIONS.ar;
 
   document.querySelectorAll("[data-i18n]").forEach(el => {
@@ -38,6 +44,7 @@ function applyTranslations(lang) {
 }
 
 function setLang(lang) {
+  if (!hasTranslations()) return;
   document.documentElement.setAttribute("lang", lang);
   document.documentElement.setAttribute("dir", lang === "ar" ? "rtl" : "ltr");
   localStorage.setItem("site-lang", lang);
@@ -85,21 +92,75 @@ function initLangSwitch() {
   });
 }
 
-/* ---------- Scroll reveal animations ---------- */
+/* ---------- Scroll reveal animations ----------
+   المحتوى ظاهر افتراضياً في CSS. نخفيه هنا فقط بعد التأكد من قدرتنا
+   على إظهاره مجدداً، مع فحص احتياطي بالتمرير لا يعتمد على المراقب —
+   حتى لا يبقى أي قسم مخفياً إذا تعطّل IntersectionObserver.       */
 function initScrollReveal() {
-  const items = document.querySelectorAll("[data-aos]");
+  const items = Array.prototype.slice.call(document.querySelectorAll("[data-aos]"));
   if (!items.length) return;
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const delay = entry.target.getAttribute("data-aos-delay");
-        if (delay) entry.target.style.transitionDelay = delay + "ms";
-        entry.target.classList.add("aos-in");
-        observer.unobserve(entry.target);
-      }
+
+  const reduceMotion = window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // بلا حركة أصلاً: نترك المحتوى ظاهراً كما هو
+  if (reduceMotion) return;
+
+  document.documentElement.classList.add("aos-ready");
+
+  const reveal = (el) => {
+    if (el.classList.contains("aos-in")) return;
+    const delay = el.getAttribute("data-aos-delay");
+    if (delay) el.style.transitionDelay = delay + "ms";
+    el.classList.add("aos-in");
+  };
+
+  // الفحص الأساسي: أي عنصر دخل الشاشة يظهر. لا يعتمد على أي API متقدم
+  // (لا IntersectionObserver ولا requestAnimationFrame) لأن كليهما قد
+  // يُعلَّق في بعض البيئات فيبقى المحتوى مخفياً.
+  let pending = items.slice();
+  let lastRun = 0;
+
+  const sweep = () => {
+    lastRun = Date.now();
+    const h = window.innerHeight || document.documentElement.clientHeight || 800;
+    pending = pending.filter((el) => {
+      const r = el.getBoundingClientRect();
+      const visible = r.top < h * 0.92 && r.bottom > 0;
+      if (visible) { reveal(el); return false; }
+      return true;
     });
-  }, { threshold: 0.15 });
-  items.forEach(el => observer.observe(el));
+    if (!pending.length) {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    }
+  };
+
+  // خانق بسيط بالوقت بدل rAF
+  let timer = null;
+  const onScroll = () => {
+    if (Date.now() - lastRun > 80) { sweep(); return; }
+    if (timer) return;
+    timer = setTimeout(() => { timer = null; sweep(); }, 80);
+  };
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll, { passive: true });
+
+  sweep();                    // ما هو ظاهر عند التحميل
+  setTimeout(sweep, 350);     // بعد استقرار التخطيط والخطوط
+  setTimeout(sweep, 1200);
+
+  // شبكة أمان أخيرة: لو بقي شيء مخفياً بلا سبب، نُظهره بدل تركه فارغاً
+  setTimeout(() => {
+    if (!pending.length) return;
+    const h = window.innerHeight || document.documentElement.clientHeight || 800;
+    const stuck = pending.some((el) => {
+      const r = el.getBoundingClientRect();
+      return r.top < h && r.bottom > 0;
+    });
+    if (stuck) items.forEach(reveal);
+  }, 3000);
 }
 
 /* ---------- Counters ---------- */
@@ -217,18 +278,89 @@ function initRadioCards() {
   });
 }
 
-/* ---------- Form submit (demo) ---------- */
+/* ---------- Analytics / conversion helper ---------- */
+window.dataLayer = window.dataLayer || [];
+function track(eventName, params) {
+  const payload = Object.assign({ event: eventName }, params || {});
+  window.dataLayer.push(payload);
+  if (typeof gtag === "function") gtag("event", eventName, params || {});
+}
+
+/* ---------- Form submit (real) ---------- */
 function initForms() {
   document.querySelectorAll("form[data-ajax-form]").forEach(form => {
-    form.addEventListener("submit", (e) => {
+    const btn = form.querySelector('button[type="submit"]');
+    const btnLabel = btn ? btn.innerHTML : "";
+    let errorBox = form.querySelector(".form-error");
+    if (!errorBox) {
+      errorBox = document.createElement("div");
+      errorBox.className = "form-error";
+      form.appendChild(errorBox);
+    }
+
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const success = form.parentElement.querySelector(".form-success");
-      if (success) {
-        form.classList.add("hidden");
-        success.classList.add("show");
+      errorBox.classList.remove("show");
+
+      if (typeof form.reportValidity === "function" && !form.reportValidity()) return;
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span><span>جارٍ الإرسال…</span>';
+      }
+
+      const data = new FormData(form);
+      data.append("form_type", form.getAttribute("data-form-type") || "contact");
+      data.append("page_url", location.href);
+
+      try {
+        const res = await fetch("/send.php", {
+          method: "POST",
+          body: data,
+          headers: { "X-Requested-With": "XMLHttpRequest" }
+        });
+        const out = await res.json().catch(() => ({ ok: false }));
+        if (!res.ok || !out.ok) throw new Error(out.message || "تعذّر الإرسال");
+
+        track(form.getAttribute("data-form-type") === "quote" ? "quote_submit" : "contact_submit", {
+          form_type: form.getAttribute("data-form-type") || "contact"
+        });
+
+        const success = form.parentElement.querySelector(".form-success");
+        if (success) {
+          form.classList.add("hidden");
+          success.classList.add("show");
+          success.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      } catch (err) {
+        errorBox.textContent =
+          "تعذّر إرسال الطلب. يُرجى المحاولة مرة أخرى أو التواصل معنا عبر واتساب على 0550783385.";
+        errorBox.classList.add("show");
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = btnLabel; }
       }
     });
   });
+}
+
+/* ---------- Click tracking (WhatsApp / phone) ---------- */
+function initClickTracking() {
+  document.addEventListener("click", (e) => {
+    const el = e.target.closest("[data-track], a[href^='tel:'], a[href*='wa.me']");
+    if (!el) return;
+    const kind = el.getAttribute("data-track") ||
+      (el.getAttribute("href").startsWith("tel:") ? "call" : "whatsapp");
+    track(kind === "call" ? "phone_click" : "whatsapp_click", {
+      link_url: el.getAttribute("href") || "",
+      page: document.body.getAttribute("data-page") || ""
+    });
+  });
+}
+
+/* ---------- Current year in footer ---------- */
+function initYear() {
+  const el = document.getElementById("year");
+  if (el) el.textContent = new Date().getFullYear();
 }
 
 /* ---------- Icon injection ---------- */
@@ -255,10 +387,12 @@ function initAll() {
   initBackToTop();
   initRadioCards();
   initForms();
+  initClickTracking();
+  initYear();
 }
 
-if (document.getElementById("header-placeholder")) {
-  document.addEventListener("partials:ready", initAll);
-} else {
+if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initAll);
+} else {
+  initAll();
 }

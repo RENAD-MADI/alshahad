@@ -1,3 +1,8 @@
 User-agent: *
 Allow: /
-Sitemap: https://alshahad.sa/sitemap.xml
+
+Disallow: /leads/
+Disallow: /send.php
+Disallow: /*.py$
+
+Sitemap: https://alshahad.net/sitemap.xml

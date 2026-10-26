@@ -1025,18 +1025,26 @@ html[dir="rtl"] .marquee-track{ animation: scroll-right 32s linear infinite; }
 /* ============================================================
    ANIMATIONS (scroll reveal)
    ============================================================ */
-[data-aos]{
+/* الإظهار التدريجي عند التمرير.
+   مشروط بالكلاس aos-ready الذي تضيفه الجافاسكربت — فإذا تعطّلت
+   الجافاسكربت لأي سبب يظهر المحتوى كاملاً بدل أن تبقى الصفحة فارغة. */
+html.aos-ready [data-aos]{
   opacity:0;
   transform: translateY(40px);
   transition: opacity .8s cubic-bezier(.4,0,.2,1), transform .8s cubic-bezier(.4,0,.2,1);
 }
-[data-aos].aos-in{ opacity:1; transform: translateY(0); }
-[data-aos="zoom"]{ transform: scale(.9); }
-[data-aos="zoom"].aos-in{ transform: scale(1); }
-[data-aos="left"]{ transform: translateX(60px); }
-[data-aos="right"]{ transform: translateX(-60px); }
-html[dir="rtl"] [data-aos="left"]{ transform: translateX(-60px); }
-html[dir="rtl"] [data-aos="right"]{ transform: translateX(60px); }
+html.aos-ready [data-aos].aos-in{ opacity:1; transform: translateY(0); }
+html.aos-ready [data-aos="zoom"]{ transform: scale(.9); }
+html.aos-ready [data-aos="zoom"].aos-in{ transform: scale(1); }
+html.aos-ready [data-aos="left"]{ transform: translateX(60px); }
+html.aos-ready [data-aos="right"]{ transform: translateX(-60px); }
+html.aos-ready[dir="rtl"] [data-aos="left"]{ transform: translateX(-60px); }
+html.aos-ready[dir="rtl"] [data-aos="right"]{ transform: translateX(60px); }
+
+/* من يفضّل تقليل الحركة: يرى المحتوى فوراً بلا أي إخفاء */
+@media (prefers-reduced-motion: reduce){
+  html.aos-ready [data-aos]{ opacity:1 !important; transform:none !important; transition:none; }
+}
 [data-aos="left"].aos-in, [data-aos="right"].aos-in{ transform: translateX(0); }
 
 /* ---------- Mini cards (why-us grids of 8) ---------- */
@@ -1412,3 +1420,53 @@ img, video, iframe{ max-width:100%; height:auto; }
     scroll-behavior: auto !important;
   }
 }
+
+/* ============================================================
+   حالات النموذج: الخطأ، التحميل، مصيدة السبام
+   ============================================================ */
+.hp-field{
+  position:absolute !important;
+  left:-9999px !important;
+  width:1px; height:1px;
+  overflow:hidden;
+  opacity:0;
+  pointer-events:none;
+}
+
+.form-error{
+  display:none;
+  margin-top:18px;
+  padding:14px 18px;
+  border-radius:12px;
+  background:#fdecec;
+  border:1px solid #f5c2c2;
+  color:#a12525;
+  font-size:.95rem;
+  line-height:1.7;
+}
+.form-error.show{ display:block; }
+
+.btn-spinner{
+  display:inline-block;
+  width:16px; height:16px;
+  margin-inline-end:8px;
+  border:2px solid rgba(255,255,255,.35);
+  border-top-color:#fff;
+  border-radius:50%;
+  animation:btn-spin .7s linear infinite;
+  vertical-align:-2px;
+}
+@keyframes btn-spin{ to{ transform:rotate(360deg); } }
+
+button[disabled]{ opacity:.7; cursor:not-allowed; }
+
+@media (prefers-reduced-motion: reduce){
+  .btn-spinner{ animation-duration:2s; }
+}
+
+/* كتل الصفحات القانونية */
+.legal-block{ margin-bottom:38px; }
+.legal-block:last-child{ margin-bottom:0; }
+.legal-block ul{ margin:12px 0 0; padding-inline-start:22px; }
+.legal-block li{ margin-bottom:10px; line-height:1.9; }
+.legal-block a{ color:var(--primary, #4B2EFF); text-decoration:underline; }
